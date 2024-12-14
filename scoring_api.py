@@ -16,10 +16,15 @@ def score_resume(resume_data, criteria):
     def score_criterion(criterion, data):
         # Base case: leaf node
         if not criterion.children:
-            score = random.uniform(3.0, 5.0)  # Mock scoring for demo
+            # Mock scoring logic - replace with actual scoring logic in production
+            relevant_data = data.get(criterion.content, {})
+            base_score = random.uniform(3.0, 5.0)  # Mock scoring for demo
+            
             return {
-                'score': score,
-                'explanation': generate_subscore_explanation(criterion.content, score)
+                'score': base_score,
+                'name': criterion.name,
+                'weight': criterion.weight,
+                'explanation': generate_subscore_explanation(criterion.content, base_score)
             }
         
         # Recursive case: internal node
@@ -27,14 +32,22 @@ def score_resume(resume_data, criteria):
         total_weight = sum(child.weight for child in criterion.children)
         weighted_sum = 0.0
         
+        # Score each child criterion
         for child in criterion.children:
             child_result = score_criterion(child, data)
             child_results[child.name] = child_result
-            weighted_sum += child_result['score'] * child.weight / total_weight
+            child_weight = child.weight / total_weight
+            weighted_sum += child_result['score'] * child_weight
+            
+            # Add weight information to child result
+            child_results[child.name]['weight'] = child_weight
         
         return {
             'score': weighted_sum,
-            'children': child_results
+            'name': criterion.name,
+            'weight': criterion.weight,
+            'children': child_results,
+            'explanation': f"Aggregated score based on {len(criterion.children)} subcriteria"
         }
     
     try:

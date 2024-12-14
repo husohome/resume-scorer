@@ -105,15 +105,38 @@ document.addEventListener('DOMContentLoaded', function() {
                             <ul class="list-group">
             `;
             
-            for (const [subcategory, details] of Object.entries(explanations)) {
+            function renderCriteriaDetails(details, level = 0) {
+                let html = '';
+                const score = details.score || 0;
+                const padding = level * 20; // Indent nested criteria
+                
                 html += `
-                    <li class="list-group-item">
-                        <strong>${subcategory}:</strong> ${(details.score || 0).toFixed(2)}/5
-                        <br>
-                        <small class="text-muted">${details.explanation}</small>
+                    <li class="list-group-item" style="padding-left: ${padding}px">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${details.name || 'Score'}:</strong> ${score.toFixed(2)}/5
+                                ${details.explanation ? `<br><small class="text-muted">${details.explanation}</small>` : ''}
+                            </div>
+                            <div class="progress" style="width: 100px;">
+                                <div class="progress-bar ${getScoreColorClass(score)}" 
+                                     role="progressbar" 
+                                     style="width: ${(score/5)*100}%">
+                                </div>
+                            </div>
+                        </div>
                     </li>
                 `;
+                
+                if (details.children) {
+                    for (const [childName, childDetails] of Object.entries(details.children)) {
+                        html += renderCriteriaDetails({...childDetails, name: childName}, level + 1);
+                    }
+                }
+                
+                return html;
             }
+            
+            html += renderCriteriaDetails(explanations);
             
             html += `
                             </ul>
