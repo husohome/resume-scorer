@@ -20,9 +20,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                    data-field="name">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Content ID</label>
+                            <label class="form-label">Content to Evaluate</label>
                             <input type="text" class="form-control" 
-                                   placeholder="Content ID" 
+                                   placeholder="What does this criterion evaluate?" 
                                    value="${criterion.content || ''}"
                                    data-field="content">
                         </div>
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function serializeCriterion(node) {
         const criterion = {
             name: node.querySelector('[data-field="name"]').value,
-            content: node.querySelector('[data-field="name"]').value.toLowerCase().replace(/\s+/g, '_'),
+            content: node.querySelector('[data-field="content"]').value,
             scale: "1-5 scale",
             children: []
         };
