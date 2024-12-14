@@ -75,12 +75,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let html = `
             <div class="alert alert-primary">
-                <h4 class="mb-3">Final Score: ${data.final_score.toFixed(2)}/5.0</h4>
+                <h4 class="mb-3">Final Score: ${(data.final_score || 0).toFixed(2)}/5.0</h4>
                 <div class="progress" style="height: 25px;">
-                    <div class="progress-bar ${getScoreColorClass(data.final_score)}" 
+                    <div class="progress-bar ${getScoreColorClass(data.final_score || 0)}" 
                          role="progressbar" 
-                         style="width: ${(data.final_score/5)*100}%">
-                        ${data.final_score.toFixed(2)}
+                         style="width: ${((data.final_score || 0)/5)*100}%">
+                        ${(data.final_score || 0).toFixed(2)}
                     </div>
                 </div>
             </div>
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
                                 data-bs-target="#collapse${category}">
-                            ${category.replace('_', ' ').toUpperCase()} - Score: ${categoryScore.toFixed(2)}
+                            ${category.replace('_', ' ').toUpperCase()} - Score: ${(categoryScore || 0).toFixed(2)}
                         </button>
                     </h2>
                     <div id="collapse${category}" class="accordion-collapse collapse">
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
             for (const [subcategory, details] of Object.entries(explanations)) {
                 html += `
                     <li class="list-group-item">
-                        <strong>${subcategory}:</strong> ${details.score.toFixed(2)}/5
+                        <strong>${subcategory}:</strong> ${(details.score || 0).toFixed(2)}/5
                         <br>
                         <small class="text-muted">${details.explanation}</small>
                     </li>
