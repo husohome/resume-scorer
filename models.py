@@ -19,9 +19,9 @@ class Criterion(BaseModel):
     @field_validator("children")
     @classmethod
     def validate_children(cls, v: List[Tuple[float, "Criterion"]]) -> List[Tuple[float, "Criterion"]]:
-        for weight, _ in v:
-            if not 0 <= weight <= 1:
-                raise ValueError("Child weight must be between 0 and 1")
+        total_weight = sum(weight for weight, _ in v)
+        if total_weight > 0 and abs(total_weight - 1.0) > 0.001:  # Allow small floating point differences
+            raise ValueError("Child weights must sum to 1.0")
         return v
 
     def calculate_score(self, data: dict) -> tuple[float, dict]:
@@ -35,13 +35,12 @@ class Criterion(BaseModel):
             }
         
         # Non-leaf node - aggregate children scores
-        total_weight = sum(w for w, _ in self.children)
         scores = {}
         weighted_sum = 0.0
         
         for weight, child in self.children:
             child_score, child_details = child.calculate_score(data)
-            weighted_score = (child_score * weight) / total_weight
+            weighted_score = child_score * weight  # No need to normalize, weights should sum to 1
             weighted_sum += weighted_score
             scores[child.name] = child_details
         

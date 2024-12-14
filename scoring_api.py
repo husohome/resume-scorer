@@ -18,7 +18,6 @@ def score_resume(resume_data, criteria):
         # Base case: leaf node
         if not criterion.children:
             # Mock scoring logic - replace with actual scoring logic in production
-            relevant_data = data.get(criterion.content, {})
             base_score = random.uniform(3.0, 5.0)  # Mock scoring for demo
             
             return {
@@ -30,18 +29,16 @@ def score_resume(resume_data, criteria):
         
         # Recursive case: internal node
         child_results = {}
-        total_weight = sum(weight for weight, _ in criterion.children)
         weighted_sum = 0.0
         
         # Score each child criterion
         for weight, child in criterion.children:
             child_result = score_criterion(child, data)
             child_results[child.name] = child_result
-            child_weight = weight / total_weight if total_weight > 0 else 0
-            weighted_sum += child_result['score'] * child_weight
+            weighted_sum += child_result['score'] * weight
             
             # Add weight information to child result
-            child_results[child.name]['weight'] = child_weight
+            child_results[child.name]['weight'] = weight
         
         return {
             'score': weighted_sum,
