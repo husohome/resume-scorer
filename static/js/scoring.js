@@ -32,9 +32,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function displayResults(data) {
+    function getScoreColorClass(score) {
+        if (score >= 4.5) return 'bg-success';
+        if (score >= 3.5) return 'bg-info';
+        if (score >= 2.5) return 'bg-warning';
+        return 'bg-danger';
+    }
+
         let html = `
             <div class="alert alert-primary">
-                <h4>Final Score: ${data.final_score.toFixed(2)}/5.0</h4>
+                <h4 class="mb-3">Final Score: ${data.final_score.toFixed(2)}/5.0</h4>
+                <div class="progress" style="height: 25px;">
+                    <div class="progress-bar ${getScoreColorClass(data.final_score)}" 
+                         role="progressbar" 
+                         style="width: ${(data.final_score/5)*100}%">
+                        ${data.final_score.toFixed(2)}
+                    </div>
+                </div>
             </div>
             <div class="accordion" id="scoreAccordion">
         `;
