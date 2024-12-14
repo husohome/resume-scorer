@@ -8,24 +8,21 @@ def create_technical_criterion(weight_config: dict) -> Criterion:
         scale="Skills proficiency scale (1-5)",
         weight=weight_config["weights"]["technical_skills"],
         children=[
-            Criterion(
+            (0.4, Criterion(
                 name="Programming Languages",
                 content="programming_skills",
-                scale="Language proficiency and diversity",
-                weight=weight_config["structure"]["technical_skills"]["programming"]["weight"]
-            ),
-            Criterion(
+                scale="Language proficiency and diversity"
+            )),
+            (0.35, Criterion(
                 name="Frameworks & Libraries",
                 content="framework_knowledge",
-                scale="Framework expertise level",
-                weight=weight_config["structure"]["technical_skills"]["frameworks"]["weight"]
-            ),
-            Criterion(
+                scale="Framework expertise level"
+            )),
+            (0.25, Criterion(
                 name="Development Tools",
                 content="tool_proficiency",
-                scale="Tool usage and familiarity",
-                weight=weight_config["structure"]["technical_skills"]["tools"]["weight"]
-            )
+                scale="Tool usage and familiarity"
+            ))
         ]
     )
 
@@ -36,18 +33,16 @@ def create_experience_criterion(weight_config: dict) -> Criterion:
         scale="Experience depth and relevance",
         weight=weight_config["weights"]["experience"],
         children=[
-            Criterion(
+            (0.6, Criterion(
                 name="Work History",
                 content="work_history_analysis",
-                scale="Role relevance and impact",
-                weight=weight_config["structure"]["experience"]["work_history"]["weight"]
-            ),
-            Criterion(
+                scale="Role relevance and impact"
+            )),
+            (0.4, Criterion(
                 name="Projects",
                 content="project_evaluation",
-                scale="Project complexity and achievements",
-                weight=weight_config["structure"]["experience"]["projects"]["weight"]
-            )
+                scale="Project complexity and achievements"
+            ))
         ]
     )
 
@@ -58,18 +53,16 @@ def create_education_criterion(weight_config: dict) -> Criterion:
         scale="Educational qualification relevance",
         weight=weight_config["weights"]["education"],
         children=[
-            Criterion(
+            (0.7, Criterion(
                 name="Degree",
                 content="degree_relevance",
-                scale="Degree level and field relevance",
-                weight=weight_config["structure"]["education"]["degree"]["weight"]
-            ),
-            Criterion(
+                scale="Degree level and field relevance"
+            )),
+            (0.3, Criterion(
                 name="Courses",
                 content="course_relevance",
-                scale="Course relevance to position",
-                weight=weight_config["structure"]["education"]["courses"]["weight"]
-            )
+                scale="Course relevance to position"
+            ))
         ]
     )
 
@@ -125,6 +118,10 @@ PRESET_CRITERIA: Dict[str, Dict] = {
 def get_preset_criteria():
     criteria_dict = {}
     for key, config in PRESET_CRITERIA.items():
+        tech_weight = config["weights"]["technical_skills"]
+        exp_weight = config["weights"]["experience"]
+        edu_weight = config["weights"]["education"]
+        
         criteria_dict[key] = {
             "name": config["name"],
             "root_criterion": Criterion(
@@ -133,9 +130,9 @@ def get_preset_criteria():
                 scale="Overall candidate evaluation",
                 weight=1.0,
                 children=[
-                    create_technical_criterion(config),
-                    create_experience_criterion(config),
-                    create_education_criterion(config)
+                    (tech_weight, create_technical_criterion(config)),
+                    (exp_weight, create_experience_criterion(config)),
+                    (edu_weight, create_education_criterion(config))
                 ]
             )
         }

@@ -1,5 +1,5 @@
-from typing import Dict, List, Optional, Union
-from pydantic import BaseModel, Field, validator
+from typing import Dict, List, Optional, Union, Tuple, Annotated
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 
 class Criterion(BaseModel):
@@ -7,12 +7,21 @@ class Criterion(BaseModel):
     content: str
     scale: str
     weight: float = Field(default=1.0, ge=0.0, le=1.0)
-    children: Optional[List['Criterion']] = Field(default_factory=list)
+    children: List[Tuple[float, "Criterion"]] = Field(default_factory=list)
 
-    @validator('weight')
-    def validate_weight(cls, v):
+    @field_validator("weight")
+    @classmethod
+    def validate_weight(cls, v: float) -> float:
         if not 0 <= v <= 1:
-            raise ValueError('Weight must be between 0 and 1')
+            raise ValueError("Weight must be between 0 and 1")
+        return v
+
+    @field_validator("children")
+    @classmethod
+    def validate_children(cls, v: List[Tuple[float, "Criterion"]]) -> List[Tuple[float, "Criterion"]]:
+        for weight, _ in v:
+            if not 0 <= weight <= 1:
+                raise ValueError("Child weight must be between 0 and 1")
         return v
 
     def calculate_score(self, data: dict) -> tuple[float, dict]:
@@ -26,13 +35,13 @@ class Criterion(BaseModel):
             }
         
         # Non-leaf node - aggregate children scores
-        total_weight = sum(child.weight for child in self.children)
+        total_weight = sum(w for w, _ in self.children)
         scores = {}
         weighted_sum = 0.0
         
-        for child in self.children:
+        for weight, child in self.children:
             child_score, child_details = child.calculate_score(data)
-            weighted_score = (child_score * child.weight) / total_weight
+            weighted_score = (child_score * weight) / total_weight
             weighted_sum += weighted_score
             scores[child.name] = child_details
         
@@ -58,8 +67,9 @@ class ScoringRequest(BaseModel):
     criteria_id: str
     weights: Optional[Dict[str, float]] = None
 
-    @validator('weights')
-    def validate_weights(cls, v):
+    @field_validator('weights')
+    @classmethod
+    def validate_weights(cls, v: Optional[Dict[str, float]]) -> Optional[Dict[str, float]]:
         if v is not None:
             if not all(0 <= w <= 1 for w in v.values()):
                 raise ValueError('All weights must be between 0 and 1')
