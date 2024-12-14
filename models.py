@@ -1,19 +1,27 @@
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
+from typing import List, Optional
+from pydantic import BaseModel, Field
 
-class Base(DeclarativeBase):
-    pass
+class Criterion(BaseModel):
+    name: str
+    content: str
+    scale: str
+    children: Optional[List['Criterion']] = Field(default_factory=list)
 
-db = SQLAlchemy(model_class=Base)
+class Resume(BaseModel):
+    id: str
+    filename: str
+    personal: dict
+    non_personal: dict
 
-class Resume(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(255), nullable=False)
-    personal_info = db.Column(db.JSON)
-    non_personal_info = db.Column(db.JSON)
-    
-class ScoringCriteria(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    structure = db.Column(db.JSON)
-    weights = db.Column(db.JSON)
+class ScoringResult(BaseModel):
+    final_score: float
+    category_scores: dict
+    explanations: dict
+
+class ScoringRequest(BaseModel):
+    resume_id: str
+    criteria_id: str
+    weights: Optional[dict] = None
+
+# Update the Criterion model reference for self-referential type
+Criterion.model_rebuild()

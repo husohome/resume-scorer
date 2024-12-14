@@ -5,7 +5,7 @@ channel = "stable-24_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["python", "main.py"]
+run = ["sh", "-c", "python main.py"]
 
 [workflows]
 runButton = "Project"
@@ -17,10 +17,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Flask Server"
+args = "FastAPI Server"
 
 [[workflows.workflow]]
-name = "Flask Server"
+name = "FastAPI Server"
 author = "agent"
 
 [workflows.workflow.metadata]
