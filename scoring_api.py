@@ -19,11 +19,10 @@ def score_resume(resume_data, criteria):
         if not criterion.children:
             # Mock scoring logic - replace with actual scoring logic in production
             base_score = random.uniform(3.0, 5.0)  # Mock scoring for demo
-            
             return {
-                'score': base_score,
+                'score': float(base_score),
                 'name': criterion.name,
-                'weight': criterion.weight,
+                'weight': float(criterion.weight),
                 'explanation': generate_subscore_explanation(criterion.content, base_score)
             }
         
@@ -35,15 +34,15 @@ def score_resume(resume_data, criteria):
         for weight, child in criterion.children:
             child_result = score_criterion(child, data)
             child_results[child.name] = child_result
-            weighted_sum += child_result['score'] * weight
+            weighted_sum += child_result['score'] * float(weight)
             
             # Add weight information to child result
-            child_results[child.name]['weight'] = weight
+            child_results[child.name]['weight'] = float(weight)
         
         return {
-            'score': weighted_sum,
+            'score': float(weighted_sum),
             'name': criterion.name,
-            'weight': criterion.weight,
+            'weight': float(criterion.weight),
             'children': child_results,
             'explanation': f"Aggregated score based on {len(criterion.children)} subcriteria"
         }
@@ -66,11 +65,12 @@ def score_resume(resume_data, criteria):
             if 'children' in details:
                 explanations[category]['children'] = details['children']
         
-        return {
-            'final_score': result['score'],
-            'category_scores': category_scores,
+        response_data = {
+            'final_score': float(result['score']),
+            'category_scores': {k: float(v) for k, v in category_scores.items()},
             'explanations': explanations
         }
+        return response_data
     except Exception as e:
         logging.error(f"Error in score_resume: {str(e)}")
         raise
