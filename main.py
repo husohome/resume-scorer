@@ -67,11 +67,10 @@ def create_criteria():
         # Generate a unique ID for the criteria
         criteria_id = name.lower().replace(" ", "_")
         
-        # Add to preset criteria without default structure
+        # Add to preset criteria with root criterion
         PRESET_CRITERIA[criteria_id] = {
             "name": name,
-            "weights": {},
-            "structure": {}
+            "root_criterion": root_criterion
         }
         
         return jsonify({

@@ -118,22 +118,32 @@ PRESET_CRITERIA: Dict[str, Dict] = {
 def get_preset_criteria():
     criteria_dict = {}
     for key, config in PRESET_CRITERIA.items():
-        tech_weight = config["weights"]["technical_skills"]
-        exp_weight = config["weights"]["experience"]
-        edu_weight = config["weights"]["education"]
-        
-        criteria_dict[key] = {
-            "name": config["name"],
-            "root_criterion": Criterion(
-                name=config["name"],
-                content="overall_evaluation",
-                scale="Overall candidate evaluation",
-                weight=1.0,
-                children=[
-                    (tech_weight, create_technical_criterion(config)),
-                    (exp_weight, create_experience_criterion(config)),
-                    (edu_weight, create_education_criterion(config))
-                ]
-            )
-        }
+        # Handle custom criteria that don't have the preset structure
+        if "root_criterion" in config:
+            criteria_dict[key] = {
+                "name": config["name"],
+                "root_criterion": config["root_criterion"]
+            }
+            continue
+            
+        # Handle preset criteria with the standard structure
+        if "weights" in config and all(k in config["weights"] for k in ["technical_skills", "experience", "education"]):
+            tech_weight = config["weights"]["technical_skills"]
+            exp_weight = config["weights"]["experience"]
+            edu_weight = config["weights"]["education"]
+            
+            criteria_dict[key] = {
+                "name": config["name"],
+                "root_criterion": Criterion(
+                    name=config["name"],
+                    content="overall_evaluation",
+                    scale="Overall candidate evaluation",
+                    weight=1.0,
+                    children=[
+                        (tech_weight, create_technical_criterion(config)),
+                        (exp_weight, create_experience_criterion(config)),
+                        (edu_weight, create_education_criterion(config))
+                    ]
+                )
+            }
     return criteria_dict
