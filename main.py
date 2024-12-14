@@ -37,13 +37,13 @@ async def score(request: ScoringRequest):
         raise HTTPException(status_code=404, detail="Resume not found")
     
     # Get criteria
-    criteria = get_preset_criteria().get(request.criteria_id)
-    if not criteria:
+    preset_criteria = get_preset_criteria().get(request.criteria_id)
+    if not preset_criteria:
         raise HTTPException(status_code=404, detail="Criteria not found")
     
-    # Update weights if provided
-    if request.weights:
-        criteria['weights'].update(request.weights)
+    criteria = preset_criteria['root_criterion']
+    
+    # Update weights if provided (TODO: implement weight updates)
     
     # Get scoring results
     results = score_resume(resume['non_personal'], criteria)

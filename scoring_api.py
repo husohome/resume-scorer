@@ -13,33 +13,46 @@ def generate_subscore_explanation(category, score):
     return explanations.get(category, f"Scored {score:.1f}/5")
 
 def score_resume(resume_data, criteria):
-    scores = {}
-    explanations = {}
-    
-    for main_category, subcategories in criteria['structure'].items():
-        category_score = 0
-        category_explanations = {}
-        
-        for subcategory, config in subcategories.items():
-            # Generate plausible random score between 3.0 and 5.0
-            subscore = random.uniform(3.0, 5.0)
-            weighted_subscore = subscore * config['weight']
-            category_score += weighted_subscore
-            
-            category_explanations[subcategory] = {
-                'score': subscore,
-                'explanation': generate_subscore_explanation(subcategory, subscore)
+    def score_criterion(criterion, data):
+        # Base case: leaf node
+        if not criterion.children:
+            score = random.uniform(3.0, 5.0)  # Mock scoring for demo
+            return {
+                'score': score,
+                'name': criterion.name,
+                'explanation': generate_subscore_explanation(criterion.content, score)
             }
         
-        scores[main_category] = category_score
-        explanations[main_category] = category_explanations
+        # Recursive case: internal node
+        child_results = [score_criterion(child, data) for child in criterion.children]
+        total_weight = sum(child.weight for child in criterion.children)
+        weighted_sum = sum(result['score'] * child.weight / total_weight 
+                         for result, child in zip(child_results, criterion.children))
+        
+        return {
+            'score': weighted_sum,
+            'name': criterion.name,
+            'children': child_results
+        }
     
-    # Calculate final score
-    final_score = sum(scores[category] * weight 
-                     for category, weight in criteria['weights'].items())
+    # Score the entire criterion tree
+    result = score_criterion(criteria.root_criterion, resume_data)
+    
+    # Format for API response
+    category_scores = {
+        child['name']: child['score']
+        for child in result.get('children', [])
+    }
+    
+    explanations = {
+        child['name']: {
+            k: v for k, v in child.items() if k != 'name'
+        }
+        for child in result.get('children', [])
+    }
     
     return {
-        'final_score': final_score,
-        'category_scores': scores,
+        'final_score': result['score'],
+        'category_scores': category_scores,
         'explanations': explanations
     }
