@@ -19,40 +19,47 @@ def score_resume(resume_data, criteria):
             score = random.uniform(3.0, 5.0)  # Mock scoring for demo
             return {
                 'score': score,
-                'name': criterion.name,
                 'explanation': generate_subscore_explanation(criterion.content, score)
             }
         
         # Recursive case: internal node
-        child_results = [score_criterion(child, data) for child in criterion.children]
+        child_results = {}
         total_weight = sum(child.weight for child in criterion.children)
-        weighted_sum = sum(result['score'] * child.weight / total_weight 
-                         for result, child in zip(child_results, criterion.children))
+        weighted_sum = 0.0
+        
+        for child in criterion.children:
+            child_result = score_criterion(child, data)
+            child_results[child.name] = child_result
+            weighted_sum += child_result['score'] * child.weight / total_weight
         
         return {
             'score': weighted_sum,
-            'name': criterion.name,
             'children': child_results
         }
     
-    # Score the entire criterion tree
-    result = score_criterion(criteria.root_criterion, resume_data)
-    
-    # Format for API response
-    category_scores = {
-        child['name']: child['score']
-        for child in result.get('children', [])
-    }
-    
-    explanations = {
-        child['name']: {
-            k: v for k, v in child.items() if k != 'name'
+    try:
+        # Score the entire criterion tree
+        result = score_criterion(criteria, resume_data)
+        
+        # Format for API response
+        category_scores = {}
+        explanations = {}
+        
+        for category, details in result.get('children', {}).items():
+            category_scores[category] = details['score']
+            explanations[category] = {
+                'score': details['score']
+            }
+            if 'explanation' in details:
+                explanations[category]['explanation'] = details['explanation']
+            if 'children' in details:
+                explanations[category]['children'] = details['children']
+        
+        return {
+            'final_score': result['score'],
+            'category_scores': category_scores,
+            'explanations': explanations
         }
-        for child in result.get('children', [])
-    }
-    
-    return {
-        'final_score': result['score'],
-        'category_scores': category_scores,
-        'explanations': explanations
-    }
+    except Exception as e:
+        logging.error(f"Error in score_resume: {str(e)}")
+        raise

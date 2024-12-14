@@ -31,13 +31,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    function displayResults(data) {
-    function getScoreColorClass(score) {
-        if (score >= 4.5) return 'bg-success';
-        if (score >= 3.5) return 'bg-info';
-        if (score >= 2.5) return 'bg-warning';
-        return 'bg-danger';
+    async function calculateScore() {
+        const criteriaId = criteriaSelect.value;
+        const resumeId = window.location.pathname.split('/').pop();
+        
+        try {
+            const response = await fetch('/api/score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    resume_id: resumeId,
+                    criteria_id: criteriaId
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            displayResults(data);
+        } catch (error) {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4>Error calculating score</h4>
+                    <p>There was an error processing your request. Please try again.</p>
+                    <p class="text-muted">Technical details: ${error.message}</p>
+                </div>
+            `;
+            console.error('Scoring error:', error);
+        }
     }
+
+    function displayResults(data) {
+        function getScoreColorClass(score) {
+            if (score >= 4.5) return 'bg-success';
+            if (score >= 3.5) return 'bg-info';
+            if (score >= 2.5) return 'bg-warning';
+            return 'bg-danger';
+        }
 
         let html = `
             <div class="alert alert-primary">
