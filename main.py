@@ -34,7 +34,13 @@ def get_criteria(criteria_id):
     preset_criteria = get_preset_criteria()
     if criteria_id not in preset_criteria:
         return jsonify({"error": "Criteria not found"}), 404
-    return jsonify(preset_criteria[criteria_id])
+    
+    criteria = preset_criteria[criteria_id]
+    # Convert Criterion objects to dict for JSON serialization
+    return jsonify({
+        "name": criteria["name"],
+        "root_criterion": criteria["root_criterion"].model_dump()
+    })
 
 @app.route("/api/criteria", methods=["POST"])
 def create_criteria():

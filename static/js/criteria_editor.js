@@ -12,26 +12,38 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="card">
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label">Name</label>
                             <input type="text" class="form-control" 
                                    placeholder="Criterion Name" 
                                    value="${criterion.name || ''}"
                                    data-field="name">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Content ID</label>
+                            <input type="text" class="form-control" 
+                                   placeholder="Content ID" 
+                                   value="${criterion.content || ''}"
+                                   data-field="content">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Weight</label>
                             <input type="number" class="form-control" 
                                    placeholder="Weight" 
                                    min="0" max="1" step="0.1"
                                    value="${criterion.weight || 1.0}"
                                    data-field="weight">
                         </div>
-                        <div class="col-md-3">
-                            <button class="btn btn-outline-primary btn-sm me-2 add-child">
-                                Add Child
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm remove-node">
-                                Remove
-                            </button>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm me-2 add-child">
+                                    Add Child
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm remove-node">
+                                    Remove
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="children mt-3"></div>
@@ -131,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const name = document.getElementById('criteriaName').value;
         
         const rootCriterion = {
-            name: name,
+            name: `Total score of ${name}`,
             content: 'overall_evaluation',
             scale: '1-5 scale',
             children: []
