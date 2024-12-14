@@ -31,16 +31,17 @@ def criteria_editor():
 
 @app.route("/api/criteria/<criteria_id>")
 def get_criteria(criteria_id):
-    preset_criteria = get_preset_criteria()
-    if criteria_id not in preset_criteria:
-        return jsonify({"error": "Criteria not found"}), 404
+    if criteria_id in PRESET_CRITERIA:
+        # Handle built-in preset criteria
+        preset_criteria = get_preset_criteria()
+        if criteria_id in preset_criteria:
+            criteria = preset_criteria[criteria_id]
+            return jsonify({
+                "name": criteria["name"],
+                "root_criterion": criteria["root_criterion"].model_dump()
+            })
     
-    criteria = preset_criteria[criteria_id]
-    # Convert Criterion objects to dict for JSON serialization
-    return jsonify({
-        "name": criteria["name"],
-        "root_criterion": criteria["root_criterion"].model_dump()
-    })
+    return jsonify({"error": "Criteria not found"}), 404
 
 @app.route("/api/criteria", methods=["POST"])
 def create_criteria():
@@ -66,19 +67,11 @@ def create_criteria():
         # Generate a unique ID for the criteria
         criteria_id = name.lower().replace(" ", "_")
         
-        # Add to preset criteria
+        # Add to preset criteria without default structure
         PRESET_CRITERIA[criteria_id] = {
             "name": name,
-            "weights": {
-                "technical_skills": 0.4,
-                "experience": 0.35,
-                "education": 0.25
-            },
-            "structure": {
-                "technical_skills": {"weight": 0.4},
-                "experience": {"weight": 0.35},
-                "education": {"weight": 0.25}
-            }
+            "weights": {},
+            "structure": {}
         }
         
         return jsonify({
