@@ -38,25 +38,51 @@ def get_criteria(criteria_id):
 
 @app.route("/api/criteria", methods=["POST"])
 def create_criteria():
-    criteria = request.json
     try:
+        criteria = request.json
+        if not criteria:
+            return jsonify({"error": "No data provided"}), 400
+
         name = criteria.get("name")
         if not name:
-            raise ValueError("Criteria name is required")
-            
-        root_criterion = Criterion(**criteria.get("root_criterion", {}))
-        
-        # Add to preset criteria (in memory for now)
+            return jsonify({"error": "Criteria name is required"}), 400
+
+        root_criterion_data = criteria.get("root_criterion")
+        if not root_criterion_data:
+            return jsonify({"error": "Root criterion is required"}), 400
+
+        # Validate criterion structure
+        try:
+            root_criterion = Criterion(**root_criterion_data)
+        except Exception as e:
+            return jsonify({"error": f"Invalid criterion structure: {str(e)}"}), 400
+
+        # Generate a unique ID for the criteria
         criteria_id = name.lower().replace(" ", "_")
+        
+        # Add to preset criteria
         PRESET_CRITERIA[criteria_id] = {
             "name": name,
-            "weights": {},  # Initialize with empty weights
-            "structure": {}  # Initialize with empty structure
+            "weights": {
+                "technical_skills": 0.4,
+                "experience": 0.35,
+                "education": 0.25
+            },
+            "structure": {
+                "technical_skills": {"weight": 0.4},
+                "experience": {"weight": 0.35},
+                "education": {"weight": 0.25}
+            }
         }
         
-        return jsonify({"id": criteria_id, "name": name})
+        return jsonify({
+            "id": criteria_id,
+            "name": name,
+            "message": "Criteria created successfully"
+        })
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        app.logger.error(f"Error creating criteria: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route("/api/score", methods=["POST"])
 def score():

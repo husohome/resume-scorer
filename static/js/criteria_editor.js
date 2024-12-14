@@ -140,6 +140,40 @@ document.addEventListener('DOMContentLoaded', function() {
         criteriaEditor.innerHTML = '';
         const rootNode = createCriterionNode(rootCriterion);
         criteriaEditor.appendChild(rootNode);
+
+        // Add save button after creating the root node
+        const saveButton = document.createElement('button');
+        saveButton.className = 'btn btn-success mt-3';
+        saveButton.textContent = 'Save Criteria';
+        saveButton.addEventListener('click', async () => {
+            const criteriaData = {
+                name: name,
+                root_criterion: serializeCriterion(rootNode)
+            };
+            
+            try {
+                const response = await fetch('/api/criteria', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(criteriaData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to save criteria');
+                }
+                
+                const result = await response.json();
+                alert('Criteria saved successfully!');
+                location.reload(); // Refresh to show new criteria
+            } catch (error) {
+                console.error('Error saving criteria:', error);
+                alert('Failed to save criteria: ' + error.message);
+            }
+        });
+        
+        criteriaEditor.appendChild(saveButton);
     });
     
     criteriaList.addEventListener('click', async (e) => {
