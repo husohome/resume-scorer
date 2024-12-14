@@ -1,94 +1,95 @@
 from typing import Dict
 from models import Criterion
 
-def create_technical_criterion(weight_config: dict) -> Criterion:
-    return Criterion(
-        name="Technical Skills",
-        content="technical_evaluation",
-        scale="Skills proficiency scale (1-5)",
-        weight=weight_config["weights"]["technical_skills"],
-        children=[
-            (0.4, Criterion(
-                name="Programming Languages",
-                content="programming_skills",
-                scale="Language proficiency and diversity"
-            )),
-            (0.35, Criterion(
-                name="Frameworks & Libraries",
-                content="framework_knowledge",
-                scale="Framework expertise level"
-            )),
-            (0.25, Criterion(
-                name="Development Tools",
-                content="tool_proficiency",
-                scale="Tool usage and familiarity"
-            ))
+def create_technical_criterion(weight_config: dict) -> dict:
+    """Create technical skills criterion with proper weight handling"""
+    weights = weight_config.get("weights", {})
+    return {
+        "name": "Technical Skills Assessment",
+        "content": "technical_skills",
+        "scale": "Skills proficiency scale (1-5)",
+        "weight": weights.get("technical_skills", 0.4),
+        "children": [
+            {
+                "name": "Programming Languages",
+                "content": "programming_skills",
+                "weight": 0.4,
+                "scale": "Language proficiency and diversity"
+            },
+            {
+                "name": "Frameworks & Libraries",
+                "content": "framework_expertise",
+                "weight": 0.35,
+                "scale": "Framework expertise level"
+            },
+            {
+                "name": "Development Tools",
+                "content": "tool_proficiency",
+                "weight": 0.25,
+                "scale": "Tool usage and familiarity"
+            }
         ]
-    )
+    }
 
-def create_experience_criterion(weight_config: dict) -> Criterion:
-    return Criterion(
-        name="Professional Experience",
-        content="experience_evaluation",
-        scale="Experience depth and relevance",
-        weight=weight_config["weights"]["experience"],
-        children=[
-            (0.6, Criterion(
-                name="Work History",
-                content="work_history_analysis",
-                scale="Role relevance and impact"
-            )),
-            (0.4, Criterion(
-                name="Projects",
-                content="project_evaluation",
-                scale="Project complexity and achievements"
-            ))
+def create_experience_criterion(weight_config: dict) -> dict:
+    """Create experience criterion with proper weight handling"""
+    weights = weight_config.get("weights", {})
+    return {
+        "name": "Professional Experience",
+        "content": "work_experience",
+        "scale": "Experience depth and relevance",
+        "weight": weights.get("experience", 0.35),
+        "children": [
+            {
+                "name": "Work History",
+                "content": "employment_history",
+                "weight": 0.6,
+                "scale": "Role relevance and impact"
+            },
+            {
+                "name": "Projects",
+                "content": "project_portfolio",
+                "weight": 0.4,
+                "scale": "Project complexity and achievements"
+            }
         ]
-    )
+    }
 
-def create_education_criterion(weight_config: dict) -> Criterion:
-    return Criterion(
-        name="Education",
-        content="education_evaluation",
-        scale="Educational qualification relevance",
-        weight=weight_config["weights"]["education"],
-        children=[
-            (0.7, Criterion(
-                name="Degree",
-                content="degree_relevance",
-                scale="Degree level and field relevance"
-            )),
-            (0.3, Criterion(
-                name="Courses",
-                content="course_relevance",
-                scale="Course relevance to position"
-            ))
+def create_education_criterion(weight_config: dict) -> dict:
+    """Create education criterion with proper weight handling"""
+    weights = weight_config.get("weights", {})
+    return {
+        "name": "Education",
+        "content": "educational_background",
+        "scale": "Educational qualification relevance",
+        "weight": weights.get("education", 0.25),
+        "children": [
+            {
+                "name": "Degree",
+                "content": "degree_relevance",
+                "weight": 0.7,
+                "scale": "Degree level and field relevance"
+            },
+            {
+                "name": "Courses",
+                "content": "course_relevance",
+                "weight": 0.3,
+                "scale": "Course relevance to position"
+            }
         ]
-    )
+    }
+
+# Default weights for different evaluation focuses
+DEFAULT_WEIGHTS = {
+    "technical_skills": 0.4,
+    "experience": 0.35,
+    "education": 0.25
+}
 
 PRESET_CRITERIA: Dict[str, Dict] = {
     "default": {
         "name": "Standard Technical Evaluation",
-        "weights": {
-            "technical_skills": 0.40,
-            "experience": 0.35,
-            "education": 0.25
-        },
-        "structure": {
-            "technical_skills": {
-                "programming": {"weight": 0.15},
-                "frameworks": {"weight": 0.15},
-                "tools": {"weight": 0.10}
-            },
-            "experience": {
-                "work_history": {"weight": 0.20},
-                "projects": {"weight": 0.15}
-            },
-            "education": {
-                "degree": {"weight": 0.15},
-                "courses": {"weight": 0.10}
-            }
-        }
+        "weights": DEFAULT_WEIGHTS.copy()
     },
     "senior_dev": {
         "name": "Senior Developer Focus",
@@ -96,29 +97,16 @@ PRESET_CRITERIA: Dict[str, Dict] = {
             "technical_skills": 0.50,
             "experience": 0.40,
             "education": 0.10
-        },
-        "structure": {
-            "technical_skills": {
-                "programming": {"weight": 0.20},
-                "frameworks": {"weight": 0.15},
-                "tools": {"weight": 0.15}
-            },
-            "experience": {
-                "work_history": {"weight": 0.25},
-                "projects": {"weight": 0.15}
-            },
-            "education": {
-                "degree": {"weight": 0.05},
-                "courses": {"weight": 0.05}
-            }
         }
     }
 }
 
 def get_preset_criteria():
+    """Get all preset criteria with proper weight handling."""
     criteria_dict = {}
+    
     for key, config in PRESET_CRITERIA.items():
-        # Handle custom criteria that don't have the preset structure
+        # For custom criteria that already have a root_criterion defined
         if "root_criterion" in config:
             criteria_dict[key] = {
                 "name": config["name"],
@@ -126,24 +114,25 @@ def get_preset_criteria():
             }
             continue
             
-        # Handle preset criteria with the standard structure
-        if "weights" in config and all(k in config["weights"] for k in ["technical_skills", "experience", "education"]):
-            tech_weight = config["weights"]["technical_skills"]
-            exp_weight = config["weights"]["experience"]
-            edu_weight = config["weights"]["education"]
-            
-            criteria_dict[key] = {
-                "name": config["name"],
-                "root_criterion": Criterion(
-                    name=config["name"],
-                    content="overall_evaluation",
-                    scale="Overall candidate evaluation",
-                    weight=1.0,
-                    children=[
-                        (tech_weight, create_technical_criterion(config)),
-                        (exp_weight, create_experience_criterion(config)),
-                        (edu_weight, create_education_criterion(config))
-                    ]
-                )
-            }
+        # Ensure weights dictionary exists with defaults
+        weights = config.get("weights", DEFAULT_WEIGHTS.copy())
+        
+        # Create root criterion with proper structure
+        root_criterion = {
+            "name": f"Total score of {config['name']}",
+            "content": "overall_evaluation",
+            "scale": "Overall candidate evaluation",
+            "weight": 1.0,
+            "children": [
+                create_technical_criterion({"weights": weights}),
+                create_experience_criterion({"weights": weights}),
+                create_education_criterion({"weights": weights})
+            ]
+        }
+        
+        criteria_dict[key] = {
+            "name": config["name"],
+            "root_criterion": root_criterion
+        }
+        
     return criteria_dict

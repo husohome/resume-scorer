@@ -1,46 +1,45 @@
-from typing import Dict, List, Optional, Union, Tuple, Annotated
-from pydantic import BaseModel, Field, field_validator
+from typing import Dict, List, Optional, Union
 from datetime import datetime
+from pydantic import BaseModel, field_validator
+from database import db
 
-class Criterion(BaseModel):
-    name: str
-    content: str
-    scale: str
-    weight: float = Field(default=1.0, ge=0.0, le=1.0)
-    children: List[Tuple[float, "Criterion"]] = Field(default_factory=list)
+class Criterion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    content = db.Column(db.String(200), nullable=False)
+    scale = db.Column(db.String(100), nullable=False)
+    weight = db.Column(db.Float, default=1.0)
+    parent_id = db.Column(db.Integer, db.ForeignKey('criterion.id'))
+    
+    children = db.relationship(
+        'Criterion',
+        backref=db.backref('parent', remote_side=[id]),
+        lazy='dynamic'
+    )
 
-    @field_validator("weight")
-    @classmethod
-    def validate_weight(cls, v: float) -> float:
-        if not 0 <= v <= 1:
-            raise ValueError("Weight must be between 0 and 1")
-        return v
-
-    @field_validator("children")
-    @classmethod
-    def validate_children(cls, v: List[Tuple[float, "Criterion"]]) -> List[Tuple[float, "Criterion"]]:
-        total_weight = sum(weight for weight, _ in v)
-        if total_weight > 0 and abs(total_weight - 1.0) > 0.001:  # Allow small floating point differences
-            raise ValueError("Child weights must sum to 1.0")
-        return v
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'content': self.content,
+            'scale': self.scale,
+            'weight': self.weight,
+            'children': [(c.weight, c.to_dict()) for c in self.children]
+        }
 
     def calculate_score(self, data: dict) -> tuple[float, dict]:
-        """Calculate score for this criterion and its children"""
-        if not self.children:
-            # Leaf node - generate score based on content
+        if not self.children.count():
             score = data.get(self.content, 0.0)
             return score, {
                 "score": score,
                 "explanation": f"Evaluated {self.content} using {self.scale}"
             }
         
-        # Non-leaf node - aggregate children scores
         scores = {}
         weighted_sum = 0.0
         
-        for weight, child in self.children:
+        for child in self.children:
             child_score, child_details = child.calculate_score(data)
-            weighted_score = child_score * weight  # No need to normalize, weights should sum to 1
+            weighted_score = child_score * child.weight
             weighted_sum += weighted_score
             scores[child.name] = child_details
         
@@ -49,13 +48,23 @@ class Criterion(BaseModel):
             "children": scores
         }
 
-class Resume(BaseModel):
-    id: str
-    filename: str
-    personal: dict
-    non_personal: dict
-    uploaded_at: datetime = Field(default_factory=datetime.now)
+class Resume(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    personal = db.Column(db.JSON)
+    non_personal = db.Column(db.JSON)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'filename': self.filename,
+            'personal': self.personal,
+            'non_personal': self.non_personal,
+            'uploaded_at': self.uploaded_at.isoformat()
+        }
+
+# Pydantic models for API request/response validation
 class ScoringResult(BaseModel):
     final_score: float
     category_scores: Dict[str, float]
@@ -73,6 +82,3 @@ class ScoringRequest(BaseModel):
             if not all(0 <= w <= 1 for w in v.values()):
                 raise ValueError('All weights must be between 0 and 1')
         return v
-
-# Update the Criterion model reference for self-referential type
-Criterion.model_rebuild()

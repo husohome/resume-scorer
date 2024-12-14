@@ -1,10 +1,10 @@
 import os
 from flask import Flask, render_template, request, jsonify
-from models import db
 import logging
 import mock_data
 from criteria import get_preset_criteria
 from scoring_api import score_resume
+from database import db
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)

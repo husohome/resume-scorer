@@ -1,108 +1,130 @@
-from flask import Flask, render_template, request, jsonify
 import os
-from typing import Dict, Any
-
-from criteria import get_preset_criteria, PRESET_CRITERIA
-from models import Criterion
+from flask import Flask, render_template, request, jsonify
+import logging
 import mock_data
-from scoring_api import score_resume # Added import for scoring_api
+from criteria import get_preset_criteria, PRESET_CRITERIA
+from scoring_api import score_resume
+from database import db
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "resume-scorer-secret"
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///resumes.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db.init_app(app)
 
-@app.route("/")
+@app.route('/')
 def index():
-    return render_template("index.html", criteria=get_preset_criteria())
+    return render_template('index.html', criteria=get_preset_criteria())
 
-@app.route("/resumes")
+@app.route('/resumes')
 def list_resumes():
-    return render_template("resume_list.html", resumes=mock_data.get_mock_resumes())
+    resumes = mock_data.get_mock_resumes()
+    return render_template('resume_list.html', resumes=resumes)
 
-@app.route("/scoring/<resume_id>")
-def scoring_result(resume_id):
-    resume = mock_data.get_resume_by_id(resume_id)
-    if not resume:
-        return jsonify({"error": "Resume not found"}), 404 #Added error handling
-    return render_template("scoring_result.html", resume=resume, criteria=get_preset_criteria())
+@app.route('/rankings')
+def show_rankings():
+    criteria = get_preset_criteria()
+    return render_template("ranked_results.html", 
+                         criteria=criteria, 
+                         ranked_resumes=[], 
+                         selected_criteria=None)
 
-@app.route("/criteria/editor")
-def criteria_editor():
-    return render_template("criteria_editor.html", criteria=get_preset_criteria())
-
-@app.route("/api/criteria/<criteria_id>")
-def get_criteria(criteria_id):
-    if criteria_id in PRESET_CRITERIA:
-        # Handle built-in preset criteria
-        preset_criteria = get_preset_criteria()
-        if criteria_id in preset_criteria:
-            criteria = preset_criteria[criteria_id]
-            return jsonify({
-                "name": criteria["name"],
-                "root_criterion": criteria["root_criterion"].model_dump()
-            })
-    
-    return jsonify({"error": "Criteria not found"}), 404
-
-@app.route("/api/criteria", methods=["POST"])
-def create_criteria():
+@app.route('/api/rank', methods=['POST'])
+def rank_resumes():
     try:
-        criteria = request.json
-        if not criteria:
-            return jsonify({"error": "No data provided"}), 400
-
-        name = criteria.get("name")
-        if not name:
-            return jsonify({"error": "Criteria name is required"}), 400
-
-        root_criterion_data = criteria.get("root_criterion")
-        if not root_criterion_data:
-            return jsonify({"error": "Root criterion is required"}), 400
-
-        # Validate criterion structure
-        try:
-            root_criterion = Criterion(**root_criterion_data)
-        except Exception as e:
-            return jsonify({"error": f"Invalid criterion structure: {str(e)}"}), 400
-
-        # Generate a unique ID for the criteria
-        criteria_id = name.lower().replace(" ", "_")
+        data = request.json
+        criteria_id = data.get('criteria_id')
         
-        # Add to preset criteria with root criterion
-        PRESET_CRITERIA[criteria_id] = {
-            "name": name,
-            "root_criterion": root_criterion
-        }
+        # Get all resumes
+        resumes = mock_data.get_mock_resumes()
         
-        return jsonify({
-            "id": criteria_id,
-            "name": name,
-            "message": "Criteria created successfully"
-        })
-    except Exception as e:
-        app.logger.error(f"Error creating criteria: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-
-@app.route("/api/score", methods=["POST"])
-def score():
-    request_data = request.json
-    try:
-        resume_id = request_data.get("resume_id")
-        criteria_id = request_data.get("criteria_id")
-
-        resume = mock_data.get_resume_by_id(resume_id)
-        if not resume:
-            return jsonify({"error": "Resume not found"}), 404
-
+        # Get selected criteria
         preset_criteria = get_preset_criteria().get(criteria_id)
         if not preset_criteria:
             return jsonify({"error": "Criteria not found"}), 404
+            
+        criteria = preset_criteria['root_criterion']
+        
+        # Score each resume
+        scored_resumes = []
+        for resume in resumes.values():
+            try:
+                results = score_resume(resume['non_personal'], criteria)
+                resume_with_score = {**resume, 'score': results['final_score']}
+                scored_resumes.append(resume_with_score)
+            except Exception as e:
+                app.logger.error(f"Error scoring resume {resume['id']}: {str(e)}")
+                continue
+        
+        # Sort by score in descending order
+        ranked_resumes = sorted(scored_resumes, key=lambda x: x['score'], reverse=True)
+        
+        return jsonify(ranked_resumes)
+    except Exception as e:
+        app.logger.error(f"Error ranking resumes: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
+@app.route('/criteria/editor')
+def criteria_editor():
+    return render_template("criteria_editor.html", criteria=get_preset_criteria())
+
+@app.route('/api/criteria', methods=['POST'])
+def create_criteria():
+    try:
+        data = request.json
+        criteria_name = data.get('name')
+        root_criterion = data.get('root_criterion')
+        
+        # Add the new criteria to the preset criteria
+        criteria_id = f"custom_{len(get_preset_criteria())}"
+        PRESET_CRITERIA[criteria_id] = {
+            "name": criteria_name,
+            "root_criterion": root_criterion
+        }
+        
+        return jsonify({"id": criteria_id, "message": "Criteria created successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/criteria/<criteria_id>')
+def get_criteria(criteria_id):
+    criteria = get_preset_criteria().get(criteria_id)
+    if not criteria:
+        return jsonify({"error": "Criteria not found"}), 404
+    return jsonify(criteria)
+
+@app.route('/api/score', methods=['POST'])
+def score():
+    try:
+        request_data = request.json
+        resume_id = request_data.get('resume_id')
+        criteria_id = request_data.get('criteria_id')
+        
+        resume = mock_data.get_resume_by_id(resume_id)
+        if not resume:
+            return jsonify({"error": "Resume not found"}), 404
+            
+        preset_criteria = get_preset_criteria().get(criteria_id)
+        if not preset_criteria:
+            return jsonify({"error": "Criteria not found"}), 404
+            
         criteria = preset_criteria['root_criterion']
         results = score_resume(resume['non_personal'], criteria)
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/scoring/<resume_id>')
+def scoring_result(resume_id):
+    resume = mock_data.get_resume_by_id(resume_id)
+    criteria = get_preset_criteria()
+    return render_template('scoring_result.html', resume=resume, criteria=criteria)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+with app.app_context():
+    db.create_all()
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
