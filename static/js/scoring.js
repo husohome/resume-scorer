@@ -91,15 +91,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const categoryScore = scores;
             const explanations = data.explanations[category];
             
+            const categoryId = category.toLowerCase().replace(/[^a-z0-9]/g, '');
             html += `
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                                data-bs-target="#collapse${category}">
-                            ${category.replace('_', ' ').toUpperCase()} - Score: ${(categoryScore || 0).toFixed(2)}
+                                data-bs-target="#collapse${categoryId}">
+                            ${category.replace(/_/g, ' ').toUpperCase()} - Score: ${(categoryScore || 0).toFixed(2)}
                         </button>
                     </h2>
-                    <div id="collapse${category}" class="accordion-collapse collapse">
+                    <div id="collapse${categoryId}" class="accordion-collapse collapse">
                         <div class="accordion-body">
                             <ul class="list-group">
             `;
