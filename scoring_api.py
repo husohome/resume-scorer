@@ -1,4 +1,5 @@
 import random
+import logging
 
 def generate_subscore_explanation(category, score):
     explanations = {
@@ -29,14 +30,14 @@ def score_resume(resume_data, criteria):
         
         # Recursive case: internal node
         child_results = {}
-        total_weight = sum(child.weight for child in criterion.children)
+        total_weight = sum(weight for weight, _ in criterion.children)
         weighted_sum = 0.0
         
         # Score each child criterion
-        for child in criterion.children:
+        for weight, child in criterion.children:
             child_result = score_criterion(child, data)
             child_results[child.name] = child_result
-            child_weight = child.weight / total_weight
+            child_weight = weight / total_weight if total_weight > 0 else 0
             weighted_sum += child_result['score'] * child_weight
             
             # Add weight information to child result
