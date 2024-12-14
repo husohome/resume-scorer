@@ -18,7 +18,7 @@
                             <option value="{{ id }}" {% if id == selected_criteria %}selected{% endif %}>{{ crit.name }}</option>
                             {% endfor %}
                         </select>
-                        <button class="btn btn-primary" id="updateRankings">Update Rankings</button>
+                        <p class="text-muted mb-0">Rankings will update automatically when criteria changes</p>
                     </div>
                 </div>
             </div>
@@ -33,24 +33,81 @@
                             {% for resume in ranked_resumes %}
                             <div class="card mb-3">
                                 <div class="card-body">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-8">
-                                            <h5 class="card-title">{{ resume.filename }}</h5>
-                                            <div class="mb-2">
-                                                <strong>Score: </strong>
-                                                <span class="badge bg-primary">{{ "%.2f"|format(resume.score) }}/5.0</span>
+                                    <div class="accordion" id="resumeAccordion{{ resume.id }}">
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header">
+                                                <button class="accordion-button collapsed" type="button" 
+                                                        data-bs-toggle="collapse" 
+                                                        data-bs-target="#collapse{{ resume.id }}">
+                                                    <div class="row w-100 align-items-center">
+                                                        <div class="col-md-4">
+                                                            <h5 class="mb-0">{{ resume.filename }}</h5>
+                                                        </div>
+                                                        <div class="col-md-2">
+                                                            <span class="badge bg-primary">{{ "%.2f"|format(resume.score) }}/5.0</span>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <div class="progress" style="height: 20px;">
+                                                                <div class="progress-bar" role="progressbar" 
+                                                                     style="width: {{ (resume.score/5)*100 }}%"
+                                                                     aria-valuenow="{{ resume.score }}" 
+                                                                     aria-valuemin="0" 
+                                                                     aria-valuemax="5"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </h2>
+                                            <div id="collapse{{ resume.id }}" class="accordion-collapse collapse">
+                                                <div class="accordion-body">
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <h6>Technical Skills</h6>
+                                                            <ul class="list-group mb-3">
+                                                                {% for skill in resume.non_personal.technical_skills.programming %}
+                                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                                    {{ skill }}
+                                                                    <span class="badge bg-primary rounded-pill">Expert</span>
+                                                                </li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                            
+                                                            <h6>Frameworks</h6>
+                                                            <ul class="list-group mb-3">
+                                                                {% for framework in resume.non_personal.technical_skills.frameworks %}
+                                                                <li class="list-group-item">{{ framework }}</li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <h6>Experience</h6>
+                                                            {% for exp in resume.non_personal.experience.work_history %}
+                                                            <div class="card mb-2">
+                                                                <div class="card-body">
+                                                                    <h6 class="card-title">{{ exp.title }}</h6>
+                                                                    <p class="card-text"><small>{{ exp.duration }}</small></p>
+                                                                    <ul>
+                                                                        {% for achievement in exp.achievements %}
+                                                                        <li>{{ achievement }}</li>
+                                                                        {% endfor %}
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                            {% endfor %}
+                                                            
+                                                            <h6>Education</h6>
+                                                            <div class="card">
+                                                                <div class="card-body">
+                                                                    <p class="card-text">{{ resume.non_personal.education.degree }}</p>
+                                                                    <p class="card-text"><small class="text-muted">
+                                                                        Relevant courses: {{ resume.non_personal.education.courses|join(", ") }}
+                                                                    </small></p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="mb-2">
-                                                <strong>Technical Skills:</strong>
-                                                <ul class="list-inline">
-                                                    {% for skill in resume.non_personal.technical_skills.programming[:3] %}
-                                                    <li class="list-inline-item badge bg-secondary">{{ skill }}</li>
-                                                    {% endfor %}
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4 text-end">
-                                            <a href="/scoring/{{ resume.id }}" class="btn btn-outline-primary">View Details</a>
                                         </div>
                                     </div>
                                 </div>

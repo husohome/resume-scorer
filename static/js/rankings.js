@@ -66,7 +66,8 @@ document.addEventListener('DOMContentLoaded', function() {
         `).join('');
     }
 
-    updateButton.addEventListener('click', updateRankings);
+    // Update rankings when criteria changes
+    criteriaSelect.addEventListener('change', updateRankings);
     
     // Initial load of rankings
     updateRankings();
