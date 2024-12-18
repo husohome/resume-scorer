@@ -1,0 +1,16 @@
+name: tf2
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+    - fastapi==0.109.0
+    - uvicorn==0.27.0
+    - python-multipart==0.0.6
+    - pydantic==2.6.0
+    - langchain==0.1.0
+    - pypdf==4.0.0
+    - python-magic==0.4.27
+    - python-magic-bin==0.4.14  # Windows 系统需要
