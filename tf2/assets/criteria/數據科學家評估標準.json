@@ -2,25 +2,33 @@
     "name": "數據科學家評估標準",
     "content": "評估數據科學家候選人的基礎技能、學習能力和發展潛力",
     "scale": "0.0 to 1.0",
+    "score": null,
     "children": [
         {
             "weight": 0.35,
             "criterion": {
                 "name": "基礎技術能力",
                 "content": "評估候選人的基本技術技能",
+                "scale": "0.0 to 1.0",
+                "score": null,
                 "children": [
                     {
                         "weight": 0.4,
                         "criterion": {
                             "name": "程式設計基礎",
                             "content": "基本的程式設計能力",
+                            "scale": "0.0 to 1.0",
+                            "score": null,
                             "children": [
                                 {
                                     "weight": 0.5,
                                     "criterion": {
                                         "name": "Python基礎",
                                         "content": "Python基本語法和常用庫（pandas、numpy）的使用能力",
-                                        "children": []
+                                        "scale": "0.0 to 1.0",
+                                        "score": null,
+                                        "children": [],
+                                        "meta_info": {}
                                     }
                                 },
                                 {
@@ -28,7 +36,10 @@
                                     "criterion": {
                                         "name": "資料處理基礎",
                                         "content": "基本的數據清理和預處理能力",
-                                        "children": []
+                                        "scale": "0.0 to 1.0",
+                                        "score": null,
+                                        "children": [],
+                                        "meta_info": {}
                                     }
                                 },
                                 {
@@ -36,10 +47,14 @@
                                     "criterion": {
                                         "name": "版本控制基礎",
                                         "content": "基本的Git操作能力",
-                                        "children": []
+                                        "scale": "0.0 to 1.0",
+                                        "score": null,
+                                        "children": [],
+                                        "meta_info": {}
                                     }
                                 }
-                            ]
+                            ],
+                            "meta_info": {}
                         }
                     },
                     {
@@ -47,13 +62,18 @@
                         "criterion": {
                             "name": "數據分析基礎",
                             "content": "基本的數據分析和統計知識",
+                            "scale": "0.0 to 1.0",
+                            "score": null,
                             "children": [
                                 {
                                     "weight": 0.4,
                                     "criterion": {
                                         "name": "統計基礎",
                                         "content": "基本統計概念和描述性統計分析能力",
-                                        "children": []
+                                        "scale": "0.0 to 1.0",
+                                        "score": null,
+                                        "children": [],
+                                        "meta_info": {}
                                     }
                                 },
                                 {
@@ -61,7 +81,10 @@
                                     "criterion": {
                                         "name": "機器學習入門",
                                         "content": "基本機器學習概念和簡單模型的理解",
-                                        "children": []
+                                        "scale": "0.0 to 1.0",
+                                        "score": null,
+                                        "children": [],
+                                        "meta_info": {}
                                     }
                                 },
                                 {
@@ -69,10 +92,14 @@
                                     "criterion": {
                                         "name": "資料視覺化",
                                         "content": "使用matplotlib、seaborn等工具進行基本的數據視覺化",
-                                        "children": []
+                                        "scale": "0.0 to 1.0",
+                                        "score": null,
+                                        "children": [],
+                                        "meta_info": {}
                                     }
                                 }
-                            ]
+                            ],
+                            "meta_info": {}
                         }
                     },
                     {
@@ -80,13 +107,18 @@
                         "criterion": {
                             "name": "資料庫基礎",
                             "content": "基本的數據庫操作能力",
+                            "scale": "0.0 to 1.0",
+                            "score": null,
                             "children": [
                                 {
                                     "weight": 0.6,
                                     "criterion": {
                                         "name": "SQL基礎",
                                         "content": "基本的SQL查詢和操作能力",
-                                        "children": []
+                                        "scale": "0.0 to 1.0",
+                                        "score": null,
+                                        "children": [],
+                                        "meta_info": {}
                                     }
                                 },
                                 {
@@ -94,13 +126,18 @@
                                     "criterion": {
                                         "name": "資料匯出入",
                                         "content": "基本的數據導入導出和格式轉換能力",
-                                        "children": []
+                                        "scale": "0.0 to 1.0",
+                                        "score": null,
+                                        "children": [],
+                                        "meta_info": {}
                                     }
                                 }
-                            ]
+                            ],
+                            "meta_info": {}
                         }
                     }
-                ]
+                ],
+                "meta_info": {}
             }
         },
         {
@@ -108,13 +145,18 @@
             "criterion": {
                 "name": "實作經驗",
                 "content": "評估實際動手經驗",
+                "scale": "0.0 to 1.0",
+                "score": null,
                 "children": [
                     {
                         "weight": 0.4,
                         "criterion": {
                             "name": "課程項目",
                             "content": "學校或培訓課程中完成的項目",
-                            "children": []
+                            "scale": "0.0 to 1.0",
+                            "score": null,
+                            "children": [],
+                            "meta_info": {}
                         }
                     },
                     {
@@ -122,7 +164,10 @@
                         "criterion": {
                             "name": "個人項目",
                             "content": "個人練習或競賽項目經驗",
-                            "children": []
+                            "scale": "0.0 to 1.0",
+                            "score": null,
+                            "children": [],
+                            "meta_info": {}
                         }
                     },
                     {
@@ -130,10 +175,14 @@
                         "criterion": {
                             "name": "實習經驗",
                             "content": "相關領域的實習或工作經驗",
-                            "children": []
+                            "scale": "0.0 to 1.0",
+                            "score": null,
+                            "children": [],
+                            "meta_info": {}
                         }
                     }
-                ]
+                ],
+                "meta_info": {}
             }
         },
         {
@@ -141,13 +190,18 @@
             "criterion": {
                 "name": "發展潛力",
                 "content": "評估學習能力和職業發展潛力",
+                "scale": "0.0 to 1.0",
+                "score": null,
                 "children": [
                     {
                         "weight": 0.4,
                         "criterion": {
                             "name": "學習熱情",
                             "content": "對數據科學的興趣和自主學習能力",
-                            "children": []
+                            "scale": "0.0 to 1.0",
+                            "score": null,
+                            "children": [],
+                            "meta_info": {}
                         }
                     },
                     {
@@ -155,7 +209,10 @@
                         "criterion": {
                             "name": "基礎溝通",
                             "content": "基本的溝通表達和團隊協作能力",
-                            "children": []
+                            "scale": "0.0 to 1.0",
+                            "score": null,
+                            "children": [],
+                            "meta_info": {}
                         }
                     },
                     {
@@ -163,10 +220,14 @@
                         "criterion": {
                             "name": "解決問題",
                             "content": "分析問題和解決問題的基本能力",
-                            "children": []
+                            "scale": "0.0 to 1.0",
+                            "score": null,
+                            "children": [],
+                            "meta_info": {}
                         }
                     }
-                ]
+                ],
+                "meta_info": {}
             }
         }
     ],

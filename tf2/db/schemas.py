@@ -1,6 +1,5 @@
-from pydantic import BaseModel
-from typing_extensions import Self
-from typing import Any, Dict
+from pydantic import BaseModel, ConfigDict
+from typing import Any, Dict, List, Tuple, ForwardRef
 from sqlalchemy import Column, String, Float, JSON, ForeignKey, Table
 from sqlalchemy.orm import relationship, DeclarativeBase
 from sqlalchemy.ext.declarative import declared_attr
@@ -25,7 +24,7 @@ class CriterionORM(Base):
     content = Column(String, nullable=False)
     scale = Column(String, nullable=False)
     score = Column(Float, nullable=True)
-    metadata = Column(JSON, nullable=False, default=dict)
+    meta_info = Column(JSON, nullable=False, default=dict)
 
     # 自引用关系
     children = relationship(
@@ -37,7 +36,7 @@ class CriterionORM(Base):
     )
 
     def to_pydantic(self) -> "Criterion":
-        """转换为 Pydantic 模���"""
+        """转换为 Pydantic 模型"""
         children_with_weights = []
         for child in self.children:
             # 获取权重
@@ -55,7 +54,7 @@ class CriterionORM(Base):
             scale=self.scale,
             score=self.score,
             children=children_with_weights,
-            metadata=self.metadata
+            meta_info=self.meta_info
         )
 
     @classmethod
@@ -66,7 +65,7 @@ class CriterionORM(Base):
             content=criterion.content,
             scale=criterion.scale,
             score=criterion.score,
-            metadata=criterion.metadata
+            meta_info=criterion.meta_info
         )
         
         # 递归处理子标准
@@ -82,14 +81,19 @@ class CriterionORM(Base):
         
         return orm_criterion
 
+# 创建一个 ForwardRef 来处理自引用
+CriterionRef = ForwardRef('Criterion')
+
 class Criterion(BaseModel):
-    """Pydantic 模型保持不变"""
+    """Pydantic 模型"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     name: str = ""
     content: str
     scale: str = "0.0 to 1.0"
     score: float | None = None
-    children: list[tuple[float, Self]] = []
-    metadata: dict[str, Any] = {}
+    children: List[Tuple[float, CriterionRef]] = []
+    meta_info: Dict[str, Any] = {}
 
     def to_orm(self) -> CriterionORM:
         """便捷方法：转换为 ORM 模型"""
@@ -143,7 +147,7 @@ class Criterion(BaseModel):
             scale=json_data.get("scale", "0.0 to 1.0"),
             score=json_data.get("score"),
             children=children,
-            metadata=json_data.get("metadata", {})
+            meta_info=json_data.get("meta_info", {})
         )
 
     def to_json(self) -> Dict[str, Any]:
@@ -160,7 +164,10 @@ class Criterion(BaseModel):
                 }
                 for weight, child in self.children
             ],
-            "metadata": self.metadata
+            "meta_info": self.meta_info
         }
+
+# 更新 ForwardRef
+Criterion.model_rebuild()
 
     

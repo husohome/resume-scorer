@@ -1,22 +1,22 @@
 from pathlib import Path
-from typing import List, Optional
-from langchain.document_loaders import PyPDFLoader
+from typing import List, Optional, Dict
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.schema import Document
-import magic
+import filetype
 from fastapi import HTTPException
 
 class ResumeManager:
     def __init__(self, base_folder: Optional[str] = None):
         """
-        初始化简历管理器
+        初始化履歷管理器
         Args:
-            base_folder: 简历文件夹的基础路径
+            base_folder: 履歷文件夾的基礎路徑
         """
         self.base_folder = Path(base_folder) if base_folder else None
-        self._mime = magic.Magic(mime=True)
+        self._resumes: Dict[str, List[Document]] = {}  # Dictionary to store resumes
     
     def set_base_folder(self, folder_path: str) -> None:
-        """设置基础文件夹路径"""
+        """設置基礎文件夾路徑"""
         path = Path(folder_path)
         if not path.exists():
             raise HTTPException(
@@ -31,17 +31,17 @@ class ResumeManager:
         self.base_folder = path
     
     def _is_pdf(self, file_path: Path) -> bool:
-        """检查文件是否为 PDF"""
-        mime_type = self._mime.from_file(str(file_path))
-        return mime_type == 'application/pdf'
+        """檢查文件是否為 PDF"""
+        kind = filetype.guess(str(file_path))
+        return kind is not None and kind.mime == 'application/pdf'
     
     def read_resume(self, file_path: str) -> List[Document]:
         """
-        读取单个简历文件
+        讀取單個履歷文件
         Args:
-            file_path: PDF 文件路径
+            file_path: PDF 文件路徑
         Returns:
-            Document 列表，每个页面一个 Document
+            Document 列表，每個頁面一個 Document
         """
         path = Path(file_path)
         if not path.exists():
@@ -58,18 +58,24 @@ class ResumeManager:
         
         try:
             loader = PyPDFLoader(str(path))
-            return loader.load()
+            documents = loader.load()
+            self._resumes[path.name] = documents  # Store the resume in memory
+            return documents
         except Exception as e:
             raise HTTPException(
                 status_code=500,
                 detail=f"Error reading PDF {file_path}: {str(e)}"
             )
     
+    def get_all_resumes(self) -> Dict[str, List[Document]]:
+        """返回所有存儲的履歷"""
+        return self._resumes
+    
     def read_all_resumes(self) -> dict[str, List[Document]]:
         """
-        读取文件夹中的所有简历
+        讀取文件夾中的所有履歷
         Returns:
-            字典，键为文件名，值为 Document 列表
+            字典，鍵為文件名，值為 Document 列表
         """
         if not self.base_folder:
             raise HTTPException(
@@ -82,7 +88,7 @@ class ResumeManager:
             try:
                 results[file_path.name] = self.read_resume(str(file_path))
             except HTTPException as e:
-                # 记录错误但继续处理其他文件
+                # 記錄錯誤但繼續處理其他文件
                 results[file_path.name] = [
                     Document(
                         page_content=f"Error reading file: {str(e.detail)}",
@@ -93,9 +99,9 @@ class ResumeManager:
     
     def get_resume_metadata(self) -> List[dict]:
         """
-        获取所有简历文件的元数据
+        獲取所有履歷文件的元數據
         Returns:
-            简历元数据列表
+            履歷元數據列表
         """
         if not self.base_folder:
             raise HTTPException(
@@ -140,14 +146,14 @@ async def get_resume(filename: str):
 
 if __name__ == "__main__":
 
-    # 创建管理器并设置文件夹
+    # 創建管理器並設置文件夾
     manager = ResumeManager("/path/to/resumes")
 
-    # 读取所有简历
+    # 讀取所有履歷
     all_resumes = manager.read_all_resumes()
 
-    # 获取元数据
+    # 獲取元數據
     metadata = manager.get_resume_metadata()
 
-    # 读取单个简历
+    # 讀取單個履歷
     documents = manager.read_resume("/path/to/resumes/example.pdf")
