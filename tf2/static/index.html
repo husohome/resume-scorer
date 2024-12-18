@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TalentFlow 2 - 简历评估系统</title>
+    <!-- Element Plus CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #409EFF;
+            color: white;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        .criteria-tree {
+            margin-bottom: 2rem;
+        }
+        .score-display {
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header class="header">
+            <div class="container">
+                <h1>TalentFlow 2 履歷評估系統</h1>
+            </div>
+        </header>
+
+        <main class="container">
+            <div class="el-tabs">
+                <div class="el-tabs__header">
+                    <div class="el-tabs__nav-wrap">
+                        <div class="el-tabs__nav">
+                            <div class="el-tabs__item is-active" onclick="switchTab('criteria')">評估標準管理</div>
+                            <div class="el-tabs__item" onclick="switchTab('resume')">履歷評估</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="criteriaTab" class="tab-content">
+                <div class="criteria-tree" id="criteriaTree"></div>
+            </div>
+
+            <div id="resumeTab" class="tab-content" style="display: none;">
+                <div class="el-upload">
+                    <button class="el-button el-button--primary" onclick="document.getElementById('fileInput').click()">
+                        上傳履歷
+                    </button>
+                    <input type="file" id="fileInput" style="display: none" accept=".pdf" onchange="handleFileUpload(event)">
+                </div>
+
+                <div class="score-display" id="scoreDisplay"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Vue 3 和 Element Plus -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+    <!-- Axios -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+    <script>
+        // API 配置
+        const api = axios.create({
+            baseURL: 'http://localhost:8000'
+        });
+
+        // 当前活动的标准
+        let currentCriteria = null;
+
+        // 切换标签页
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+            document.getElementById(tabName + 'Tab').style.display = 'block';
+            
+            document.querySelectorAll('.el-tabs__item').forEach(item => {
+                item.classList.remove('is-active');
+                if (item.textContent.includes(tabName === 'criteria' ? '評估標準' : '履歷')) {
+                    item.classList.add('is-active');
+                }
+            });
+        }
+
+        // 加载评估标准
+        async function loadCriteria() {
+            try {
+                const response = await api.get('/criteria/');
+                const criteria = response.data;
+                if (criteria.length > 0) {
+                    currentCriteria = criteria[0];
+                    displayCriteriaTree(currentCriteria);
+                }
+            } catch (error) {
+                ElementPlus.ElMessage.error('載入評估標準失敗:' + error.message);
+            }
+        }
+
+        // 显示评估标准树
+        function displayCriteriaTree(criteria) {
+            const treeHtml = buildCriteriaTreeHtml(criteria);
+            document.getElementById('criteriaTree').innerHTML = treeHtml;
+        }
+
+        // 构建评估标准树 HTML
+        function buildCriteriaTreeHtml(criterion, level = 0) {
+            const padding = level * 20;
+            let html = `
+                <div style="padding-left: ${padding}px; margin: 10px 0;">
+                    <strong>${criterion.name}</strong>: ${criterion.content}
+                    ${criterion.score ? `<span style="color: #409EFF">(分數: ${criterion.score})</span>` : ''}
+                </div>
+            `;
+
+            if (criterion.children && criterion.children.length > 0) {
+                criterion.children.forEach(([weight, child]) => {
+                    html += `
+                        <div style="padding-left: ${padding + 20}px; color: #666;">
+                            權重: ${weight}
+                        </div>
+                        ${buildCriteriaTreeHtml(child, level + 1)}
+                    `;
+                });
+            }
+
+            return html;
+        }
+
+        // 处理文件上传
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                // 首先上传文件
+                await api.post('/resumes/upload', formData);
+
+                // 然后进行评分
+                const response = await api.post(`/scorers/${currentCriteria.name}/${file.name}`);
+                const result = response.data;
+
+                // 显示评分结果
+                displayScore(result);
+            } catch (error) {
+                ElementPlus.ElMessage.error('履歷處理失敗' + error.message);
+            }
+        }
+
+        // 显示评分结果
+        function displayScore(result) {
+            const scoreHtml = `
+                <div class="el-card">
+                    <div class="el-card__header">
+                        <h3>評分结果</h3>
+                    </div>
+                    <div class="el-card__body">
+                        <p>總分：${(result.overall_score * 100).toFixed(1)}分</p>
+                        ${buildDetailedScoreHtml(result.scored_criterion)}
+                    </div>
+                </div>
+            `;
+            document.getElementById('scoreDisplay').innerHTML = scoreHtml;
+        }
+
+        // 构建详细评分 HTML
+        function buildDetailedScoreHtml(criterion, level = 0) {
+            const padding = level * 20;
+            let html = `
+                <div style="padding-left: ${padding}px; margin: 5px 0;">
+                    <strong>${criterion.name}</strong>: 
+                    <span style="color: #409EFF">${(criterion.score * 100).toFixed(1)}分</span>
+                </div>
+            `;
+
+            if (criterion.children && criterion.children.length > 0) {
+                criterion.children.forEach(([weight, child]) => {
+                    html += buildDetailedScoreHtml(child, level + 1);
+                });
+            }
+
+            return html;
+        }
+
+        // 页面加载完成后初始化
+        window.onload = function() {
+            loadCriteria();
+        };
+    </script>
+</body>
+</html>
