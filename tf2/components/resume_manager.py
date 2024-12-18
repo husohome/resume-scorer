@@ -4,6 +4,8 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.schema import Document
 import filetype
 from fastapi import HTTPException
+from tf2.db.schemas import TFResume
+import datetime
 
 class ResumeManager:
     def __init__(self, base_folder: Optional[str] = None):
@@ -35,13 +37,34 @@ class ResumeManager:
         kind = filetype.guess(str(file_path))
         return kind is not None and kind.mime == 'application/pdf'
     
-    def read_resume(self, file_path: str) -> List[Document]:
+    def _convert_to_tf_resume(self, documents: List[Document], file_path: Path) -> TFResume:
+        """將 Document 列表轉換為 TFResume 對象"""
+        # 合併所有頁面的內容
+        full_content = "\n".join(doc.page_content for doc in documents)
+        
+        # 簡單的個人信息提取（這裡可以根據需要改進）
+        # 假設前500個字符包含個人信息
+        personal_info = full_content[:500]
+        remaining_content = full_content[500:]
+        
+        return TFResume(
+            personal_info=personal_info,
+            content=remaining_content,
+            meta_info={
+                "file_path": str(file_path),
+                "file_type": "application/pdf",
+                "page_count": len(documents),
+                "last_modified": datetime.datetime.fromtimestamp(file_path.stat().st_mtime)
+            }
+        )
+    
+    def read_resume(self, file_path: str) -> TFResume:
         """
         讀取單個履歷文件
         Args:
             file_path: PDF 文件路徑
         Returns:
-            Document 列表，每個頁面一個 Document
+            TFResume 對象
         """
         path = Path(file_path)
         if not path.exists():
@@ -59,23 +82,54 @@ class ResumeManager:
         try:
             loader = PyPDFLoader(str(path))
             documents = loader.load()
-            self._resumes[path.name] = documents  # Store the resume in memory
-            return documents
+            self._resumes[path.name] = documents  # Store the raw documents in memory
+            return self._convert_to_tf_resume(documents, path)
         except Exception as e:
             raise HTTPException(
                 status_code=500,
                 detail=f"Error reading PDF {file_path}: {str(e)}"
             )
+
+    def get_all_resumes(self) -> Dict[str, TFResume]:
+        """返回所有存儲的履歷（測試用假資料）"""
+        return {
+            "resume1.pdf": TFResume(
+                personal_info="王小明\n0912-345-678\nxiaoming@email.com\n台北市信義區信義路100號",
+                content="工作經歷：\n2018-2022 軟體工程師\n專案經驗：開發企業內部系統\n技能：Python, Java, SQL",
+                meta_info={
+                    "file_path": "/fake/path/resume1.pdf",
+                    "file_type": "application/pdf", 
+                    "page_count": 2,
+                    "last_modified": datetime.datetime(2023, 1, 1)
+                }
+            ),
+            "resume2.pdf": TFResume(
+                personal_info="李大華\n0923-456-789\ndahua@email.com\n新北市板橋區中山路200號",
+                content="工作經歷：\n2015-2023 系統分析師\n專案經驗：金融系統開發\n技能：C#, .NET, Azure",
+                meta_info={
+                    "file_path": "/fake/path/resume2.pdf",
+                    "file_type": "application/pdf",
+                    "page_count": 3,
+                    "last_modified": datetime.datetime(2023, 2, 1)
+                }
+            ),
+            "resume3.pdf": TFResume(
+                personal_info="張美玲\n0934-567-890\nmeiling@email.com\n台中市西區民生路300號",
+                content="工作經歷：\n2019-2023 前端工程師\n專案經驗：電商網站開發\n技能：JavaScript, React, Vue",
+                meta_info={
+                    "file_path": "/fake/path/resume3.pdf",
+                    "file_type": "application/pdf",
+                    "page_count": 1,
+                    "last_modified": datetime.datetime(2023, 3, 1)
+                }
+            )
+        }
     
-    def get_all_resumes(self) -> Dict[str, List[Document]]:
-        """返回所有存儲的履歷"""
-        return self._resumes
-    
-    def read_all_resumes(self) -> dict[str, List[Document]]:
+    def read_all_resumes(self) -> Dict[str, TFResume]:
         """
         讀取文件夾中的所有履歷
         Returns:
-            字典，鍵為文件名，值為 Document 列表
+            字典，鍵為文件名，值為 TFResume 對象
         """
         if not self.base_folder:
             raise HTTPException(
@@ -89,12 +143,14 @@ class ResumeManager:
                 results[file_path.name] = self.read_resume(str(file_path))
             except HTTPException as e:
                 # 記錄錯誤但繼續處理其他文件
-                results[file_path.name] = [
-                    Document(
-                        page_content=f"Error reading file: {str(e.detail)}",
-                        metadata={"error": True, "file_path": str(file_path)}
-                    )
-                ]
+                results[file_path.name] = TFResume(
+                    personal_info="Error reading file",
+                    content=str(e.detail),
+                    meta_info={
+                        "error": True,
+                        "file_path": str(file_path)
+                    }
+                )
         return results
     
     def get_resume_metadata(self) -> List[dict]:

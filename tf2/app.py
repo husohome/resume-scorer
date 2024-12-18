@@ -1,10 +1,11 @@
 import json
 import gradio as gr
 from pathlib import Path
-from tf2.db.schemas import Criterion
+from tf2.db.schemas import Criterion, TFResume, ResumeScoring
 from tf2.components.resume_scorer import ResumeScorer
 from tf2.components.criteria_manager import CriteriaManager
 from tf2.components.resume_manager import ResumeManager
+
 
 print("\n=== 啟動履歷評分系統 ===")
 
@@ -25,14 +26,32 @@ all_resumes = resume_manager.get_all_resumes()
 BOOTSTRAP_HTML = """
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<style>
+.resume-card {
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.resume-card .header {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    cursor: pointer;
+}
+.resume-card .content {
+    padding: 1rem;
+    display: none;
+}
+.resume-card.expanded .content {
+    display: block;
+}
+.resume-checkbox {
+    margin-right: 10px;
+}
+</style>
 <script>
-function saveCriterion(element) {
-    const card = element.closest('.card');
-    const textarea = card.querySelector('textarea');
-    const jsonText = textarea.value;
-    // Call Gradio's function
-    const event = new CustomEvent('save-criterion', { detail: jsonText });
-    document.dispatchEvent(event);
+function toggleResume(element) {
+    element.closest('.resume-card').classList.toggle('expanded');
 }
 
 function getSelectedResumes() {
@@ -56,16 +75,39 @@ def create_criterion_card(criterion):
     </div>
     """
 
-def create_resume_card(name, docs, checked=False):
+def create_resume_card(name: str, resume, checked=False):
+    """創建履歷卡片"""
+    # 截斷內容預覽
+    content_preview = resume.content[:100] + "..." if len(resume.content) > 100 else resume.content
+    
     return f"""
-    <div class="card mb-2">
-        <div class="card-body">
-            <div class="form-check">
-                <input class="form-check-input resume-checkbox" type="checkbox" data-name="{name}" {'checked' if checked else ''}>
-                <label class="form-check-label">
-                    <h5 class="card-title mb-0">{name}</h5>
-                    <p class="card-text">頁數: {len(docs)}</p>
-                </label>
+    <div class="resume-card">
+        <div class="header d-flex justify-content-between align-items-center" onclick="toggleResume(this)">
+            <div class="d-flex align-items-center">
+                <input class="resume-checkbox" type="checkbox" data-name="{name}" {'checked' if checked else ''} 
+                       onclick="event.stopPropagation();">
+                <div>
+                    <h5 class="mb-1">{resume.personal_info[:50]}...</h5>
+                    <small class="text-muted">點擊展開完整內容</small>
+                </div>
+            </div>
+            <span class="badge bg-primary">{resume.meta_info.get('page_count', '?')} 頁</span>
+        </div>
+        <div class="content">
+            <div class="mb-3">
+                <h6>個人資訊</h6>
+                <pre class="bg-light p-2">{resume.personal_info}</pre>
+            </div>
+            <div>
+                <h6>履歷內容</h6>
+                <pre class="bg-light p-2">{resume.content}</pre>
+            </div>
+            <div class="mt-3">
+                <h6>檔案資訊</h6>
+                <ul class="list-unstyled">
+                    <li>檔案路徑: {resume.meta_info.get('file_path', 'N/A')}</li>
+                    <li>最後修改: {resume.meta_info.get('last_modified', 'N/A')}</li>
+                </ul>
             </div>
         </div>
     </div>
@@ -155,25 +197,31 @@ def update_criterion_json(name: str, json_text: str) -> gr.update:
         print(f"錯誤: {error_msg}")
         return gr.update(value=error_msg)
 
-def get_resume_list() -> list:
-    """獲取履歷列表"""
+def handle_file_upload(files) -> str:
+    """處理文件上傳"""
+    if not files:
+        return "請上傳至少一個文件。"
+    
     try:
-        metadata_list = resume_manager.get_resume_metadata()
-        return [
-            f"{meta['filename']} ({meta['size'] / 1024:.1f} KB)"
-            for meta in metadata_list
-        ]
+        # Set the base folder to assets/resumes
+        resume_manager.set_base_folder(str(tf2_root / "assets/resumes"))
+        
+        for file in files:
+            # Access the file content directly as a string
+            file_content = file  # Since NamedString behaves like a string
+            
+            # Use the 'name' attribute to get the file name
+            file_path = resume_manager.base_folder / file.name
+            with open(file_path, "wb") as f:
+                f.write(file_content.encode())  # Encode the string to bytes for writing
+        
+        # 重新載入所有履歷
+        global all_resumes
+        all_resumes = resume_manager.get_all_resumes()
+        
+        return f"成功上傳 {len(files)} 個文件。"
     except Exception as e:
-        print(f"獲取履歷列表失敗: {str(e)}")
-        return []
-
-def update_resume_list() -> gr.update:
-    """更新履歷列表的下拉菜單"""
-    try:
-        choices = get_resume_list()
-        return gr.update(choices=choices)
-    except Exception as e:
-        return gr.update(choices=[f"獲取履歷列表失敗: {str(e)}"])
+        return f"文件上傳失敗: {str(e)}"
 
 def score_selected_resumes(selected_resumes: list) -> str:
     """對選擇的履歷進行評分"""
@@ -192,8 +240,8 @@ def score_selected_resumes(selected_resumes: list) -> str:
         
         # 格式化輸出
         output = ["評分結果：\n"]
-        for filename, scored_criterion in results.items():
-            overall_score = scored_criterion.calculate_overall_score()
+        for filename, scoring in results.items():
+            overall_score = scoring.criterion.calculate_overall_score()
             output.append(f"{filename}: {overall_score:.2f}")
             
             def format_details(crit, level=1):
@@ -202,7 +250,7 @@ def score_selected_resumes(selected_resumes: list) -> str:
                 for _, child in crit.children:
                     format_details(child, level + 1)
             
-            format_details(scored_criterion)
+            format_details(scoring.criterion)
             output.append("")  # 添加空行分隔
         
         return "\n".join(output)
@@ -227,37 +275,21 @@ def refresh_criteria():
             gr.update(choices=[], value=None)
         )
 
-def handle_file_upload(files) -> str:
-    """處理文件上傳"""
-    if not files:
-        return "請上傳至少一個文件。"
-    
+def update_resume_list() -> gr.HTML:
+    """更新履歷列表顯示"""
     try:
-        # Set the base folder to assets/resumes
-        resume_manager.set_base_folder(str(tf2_root / "assets/resumes"))
+        # 重新載入所有履歷
+        global all_resumes
+        all_resumes = resume_manager.get_all_resumes()
         
-        for file in files:
-            # Access the file content directly as a string
-            file_content = file  # Since NamedString behaves like a string
-            
-            # Use the 'name' attribute to get the file name
-            file_path = resume_manager.base_folder / file.name
-            with open(file_path, "wb") as f:
-                f.write(file_content.encode())  # Encode the string to bytes for writing
-        return f"成功上傳 {len(files)} 個���件。"
-    except Exception as e:
-        return f"文件上傳失敗: {str(e)}"
-
-def handle_scoring(selected_resumes: list) -> gr.update:
-    """處理評分並更新顯示"""
-    try:
-        # 進行評分
-        result = score_selected_resumes(selected_resumes)
+        # 創建所有履歷卡片的 HTML
+        resume_cards = []
+        for name, resume in all_resumes.items():
+            resume_cards.append(create_resume_card(name, resume))
         
-        # 更新UI
-        return gr.update(value=result)
+        return gr.update(value=BOOTSTRAP_HTML + "\n".join(resume_cards))
     except Exception as e:
-        return gr.update(value=f"評分失敗: {str(e)}")
+        return gr.update(value=f"更新履歷列表失敗: {str(e)}")
 
 # 創建 Gradio 界面
 with gr.Blocks(title="履歷評分系統") as demo:
@@ -301,67 +333,25 @@ with gr.Blocks(title="履歷評分系統") as demo:
             file_count="multiple"
         )
         score_btn = gr.Button("開始評分")
-        
-    with gr.Row():
-        # build me some test all resumes
-        all_resumes = {'Jane': 'resume 1', 'John': 'resume 2', 'Jack': 'resume 3'}
-        resume_checkboxes = gr.CheckboxGroup(
-            choices=[f"{name} ({len(docs)} pages)" for name, docs in all_resumes.items()],
-            label="選擇要評分的履歷",
-            interactive=True
-        )
-
+    
+    # 履歷列表顯示
+    resume_list = gr.HTML(value=BOOTSTRAP_HTML)
+    
     # 評分結果顯示
     score_status = gr.Textbox(label="評分結果", interactive=False)
-
-    def handle_upload(files):
-        """處理文件上傳並更��履歷列表"""
-        try:
-            # 上傳文件
-            upload_result = handle_file_upload(files)
-            
-            # 重新載入履歷列表
-            global all_resumes
-            all_resumes = resume_manager.get_all_resumes()
-            
-            # 更新選項列表
-            choices = [f"{name} ({len(docs)} pages)" for name, docs in all_resumes.items()]
-            
-            # 更新UI
-            return [
-                gr.update(value="上傳成功"),
-                gr.update(choices=choices)
-            ]
-        except Exception as e:
-            return [
-                gr.update(value=f"上傳失敗: {str(e)}"),
-                gr.update()
-            ]
-
-    def handle_scoring(selected_resumes):
-        """處理評分並更新顯示"""
-        try:
-            # 從選擇的字符串中提取文件名
-            selected_names = [name.split(" (")[0] for name in selected_resumes]
-            
-            # 進行評分
-            result = score_selected_resumes(selected_names)
-            
-            # 更新UI
-            return gr.update(value=result)
-        except Exception as e:
-            return gr.update(value=f"評分失敗: {str(e)}")
-
+    
     # 綁定事件
     upload_file.upload(
-        fn=handle_upload,
+        fn=handle_file_upload,
         inputs=[upload_file],
-        outputs=[score_status, resume_checkboxes]
+        outputs=[score_status]
+    ).then(
+        fn=update_resume_list,
+        outputs=[resume_list]
     )
-
+    
     score_btn.click(
-        fn=handle_scoring,
-        inputs=[resume_checkboxes],
+        fn=lambda: score_selected_resumes([name for name in all_resumes.keys()]),
         outputs=[score_status]
     )
 

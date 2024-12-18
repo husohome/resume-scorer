@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Optional, Dict
 import random
-from tf2.db.schemas import Criterion
-from langchain.schema import Document
+from tf2.db.schemas import Criterion, TFResume, ResumeScoring
+import datetime
 
 class ResumeScorer:
     def __init__(self, seed: Optional[int] = None):
@@ -34,37 +34,42 @@ class ResumeScorer:
     def score_resume(
         self, 
         criterion: Criterion,
-        documents: list[Document]
-    ) -> Criterion:
+        resume: TFResume
+    ) -> ResumeScoring:
         """
         為履歷生成評分（模擬版本）
         
         Args:
             criterion: 評估標準對象
-            documents: 履歷文檔（這裡不會實際使用，但保持接口一致性）
+            resume: 履歷對象
         
         Returns:
-            填充了分數的評估標準對象
+            評分記錄對象
         """
-        return self._fill_criterion_scores(criterion)
+        scored_criterion = self._fill_criterion_scores(criterion)
+        return ResumeScoring(
+            resume=resume,
+            criterion=scored_criterion,
+            timing=datetime.datetime.now()
+        )
     
     def score_resume_batch(
         self,
         criterion: Criterion,
-        documents_batch: dict[str, list[Document]]
-    ) -> dict[str, Criterion]:
+        resumes: Dict[str, TFResume]
+    ) -> Dict[str, ResumeScoring]:
         """
         批量為多份履歷生成評分
         
         Args:
             criterion: 評估標準對象
-            documents_batch: 履歷文檔批次，鍵為文件名
+            resumes: 履歷對象字典，鍵為文件名
         
         Returns:
-            文件名到評分結果的映射
+            文件名到評分記錄的映射
         """
         results = {}
-        for filename, docs in documents_batch.items():
+        for filename, resume in resumes.items():
             # 為每個履歷創建標準的深拷貝，避免共享狀態
             criterion_copy = Criterion(
                 name=criterion.name,
@@ -73,7 +78,7 @@ class ResumeScorer:
                 children=criterion.children.copy(),
                 meta_info=criterion.meta_info.copy() if criterion.meta_info else {}
             )
-            results[filename] = self.score_resume(criterion_copy, docs)
+            results[filename] = self.score_resume(criterion_copy, resume)
         return results
 
 # 使用示例：

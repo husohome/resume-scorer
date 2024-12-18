@@ -1,89 +1,9 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Any, Dict, List, Tuple, ForwardRef
-from sqlalchemy import Column, String, Float, JSON, ForeignKey, Table
-from sqlalchemy.orm import relationship, DeclarativeBase
-from sqlalchemy.ext.declarative import declared_attr
-
-class Base(DeclarativeBase):
-    pass
-
-# 关联表用于处理 criteria 之间的父子关系
-criteria_association = Table(
-    'criteria_association',
-    Base.metadata,
-    Column('parent_id', String, ForeignKey('criteria.name'), primary_key=True),
-    Column('child_id', String, ForeignKey('criteria.name'), primary_key=True),
-    Column('weight', Float, nullable=False)
-)
-
-class CriterionORM(Base):
-    """SQLAlchemy 的 Criterion 模型"""
-    __tablename__ = 'criteria'
-
-    name = Column(String, primary_key=True)
-    content = Column(String, nullable=False)
-    scale = Column(String, nullable=False)
-    score = Column(Float, nullable=True)
-    meta_info = Column(JSON, nullable=False, default=dict)
-
-    # 自引用关系
-    children = relationship(
-        'CriterionORM',
-        secondary=criteria_association,
-        primaryjoin=name == criteria_association.c.parent_id,
-        secondaryjoin=name == criteria_association.c.child_id,
-        backref='parents'
-    )
-
-    def to_pydantic(self) -> "Criterion":
-        """转换为 Pydantic 模型"""
-        children_with_weights = []
-        for child in self.children:
-            # 获取权重
-            weight = next(
-                row.weight for row in criteria_association.select()
-                .where(criteria_association.c.parent_id == self.name)
-                .where(criteria_association.c.child_id == child.name)
-                .execute()
-            )
-            children_with_weights.append((weight, child.to_pydantic()))
-        
-        return Criterion(
-            name=self.name,
-            content=self.content,
-            scale=self.scale,
-            score=self.score,
-            children=children_with_weights,
-            meta_info=self.meta_info
-        )
-
-    @classmethod
-    def from_pydantic(cls, criterion: "Criterion") -> "CriterionORM":
-        """从 Pydantic 模型创建"""
-        orm_criterion = cls(
-            name=criterion.name,
-            content=criterion.content,
-            scale=criterion.scale,
-            score=criterion.score,
-            meta_info=criterion.meta_info
-        )
-        
-        # 递归处理子标准
-        for weight, child in criterion.children:
-            child_orm = cls.from_pydantic(child)
-            orm_criterion.children.append(child_orm)
-            # 需要单独设置权重
-            criteria_association.insert().values(
-                parent_id=orm_criterion.name,
-                child_id=child_orm.name,
-                weight=weight
-            )
-        
-        return orm_criterion
+import datetime
 
 # 创建一个 ForwardRef 来处理自引用
 CriterionRef = ForwardRef('Criterion')
-
 class Criterion(BaseModel):
     """Pydantic 模型"""
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -94,10 +14,6 @@ class Criterion(BaseModel):
     score: float | None = None
     children: List[Tuple[float, CriterionRef]] = []
     meta_info: Dict[str, Any] = {}
-
-    def to_orm(self) -> CriterionORM:
-        """便捷方法：转换为 ORM 模型"""
-        return CriterionORM.from_pydantic(self)
 
     def calculate_overall_score(self) -> float | None:
         """计算当前标准及其所有子标准的加权总分。
@@ -170,4 +86,15 @@ class Criterion(BaseModel):
 # 更新 ForwardRef
 Criterion.model_rebuild()
 
-    
+class TFResume(BaseModel):
+    """履歷模型"""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    personal_info: str
+    content: str # this is content without personal info
+    meta_info: Dict[str, Any] = {}
+
+class ResumeScoring(BaseModel):
+    """履歷評分記錄"""
+    resume: TFResume
+    criterion: Criterion  # criterion itself has scores
+    timing: datetime.datetime
